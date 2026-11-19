@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adaptive Study Scheduler - Daily Planning</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#f4f7fb;--panel:#fff;--text:#182230;--muted:#667085;--line:#dbe3ee;
+  --primary:#315bea;--primary2:#2448bb;--success:#178c55;--warning:#a85b00;
+  --danger:#c83c3c;--purple:#6d4aff;--shadow:0 12px 30px rgba(30,45,70,.07)
+}
+body{margin:0;font-family:Inter,"Segoe UI","Microsoft JhengHei",Arial,sans-serif;background:var(--bg);color:var(--text)}
+.container{width:min(1140px,93%);margin:26px auto 60px}
+.hero{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:30px;border-radius:22px;background:linear-gradient(135deg,#173d91,#3563ef);color:#fff;box-shadow:var(--shadow)}
+.hero h1{margin:0 0 8px;font-size:40px;line-height:1.08}.hero p{margin:5px 0;opacity:.93}
+.hero-badge{white-space:nowrap;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);border-radius:999px;padding:10px 14px;font-size:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;margin-top:18px;box-shadow:var(--shadow)}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}
+.section-head h2{margin:0 0 5px;font-size:21px}.section-head p{margin:0;color:var(--muted);font-size:14px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+label{display:block;font-size:13px;font-weight:800;margin-bottom:6px}
+input,select{width:100%;height:44px;border:1px solid var(--line);border-radius:11px;padding:0 12px;font:inherit;background:#fff;outline:none}
+input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(49,91,234,.11)}
+input[readonly]{background:#f8fafc;color:#475467}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+button{appearance:none;border:0;border-radius:11px;padding:11px 16px;font-weight:800;cursor:pointer;transition:.16s ease}
+button:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary2)}
+.btn-secondary{background:#edf2f7;color:#344054}.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}.btn-purple{background:var(--purple);color:#fff}
+.btn-warning{background:#f8e7cd;color:#8a4a00}.btn-small{padding:8px 10px;font-size:12px}
+.message{display:none;margin-top:14px;padding:13px 14px;border-radius:12px;font-size:14px}
+.message.show{display:block}.message.info{background:#edf4ff;color:#244b95;border:1px solid #c2d5ff}
+.message.success{background:#eaf8f1;color:#146c43;border:1px solid #bde8d1}
+.message.warning{background:#fff5e8;color:#925300;border:1px solid #fed7aa}
+.plan-status{display:none;margin-top:14px;padding:13px 14px;border-radius:12px;background:#fff4e5;border:1px solid #fed7aa;color:#8a4a00;font-weight:800}
+.plan-status.show{display:block}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:var(--shadow)}
+.stat span{display:block;color:var(--muted);font-size:13px}.stat strong{display:block;font-size:27px;margin-top:8px}
+.course-list,.session-list{display:grid;gap:12px}
+.course-card,.session-card{border:1px solid var(--line);border-radius:15px;padding:16px;background:#fff}
+.course-top,.session-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.course-top h3,.session-top h3{margin:0 0 6px;font-size:18px}
+.meta{display:flex;flex-wrap:wrap;gap:14px;color:var(--muted);font-size:13px;line-height:1.6}
+.badge{display:inline-flex;align-items:center;min-height:28px;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800}
+.badge.pending{background:#eef2f6;color:#475467}.badge.completed{background:#e6f6ee;color:#18794e}
+.badge.running{background:#f1ecff;color:#5a3dc7}.badge.paused{background:#fff4e5;color:#b54708}
+.session-card.completed{opacity:.72}.session-card.running{border-color:#aa96ff;background:#fcfbff}
+.allocation{margin-top:12px;padding:11px 12px;border-radius:10px;background:#f8fafc;color:#475467;font-size:13px}
+.timer-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:12px 13px;border-radius:12px;background:#f8fafc;border:1px solid var(--line)}
+.timer-value{font-size:24px;font-weight:900;letter-spacing:.04em;color:#4f3aae}
+.empty{text-align:center;color:#98a2b3;padding:34px 10px}
+.help-box{margin-top:14px;padding:13px 14px;border-radius:12px;background:#f8fafc;border:1px solid var(--line);color:#475467;font-size:13px;line-height:1.65}
+.progress{height:10px;border-radius:999px;background:#e9eef5;overflow:hidden;margin-top:10px}
+.progress-bar{height:100%;background:var(--primary)}
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:20px;z-index:9999}
+.modal-backdrop.show{display:flex}
+.modal-box{width:min(460px,92vw);background:#fff;border-radius:18px;padding:26px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.25);border:1px solid var(--line)}
+.modal-icon{width:64px;height:64px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:#eaf8f1;color:#178c55;font-size:30px;font-weight:900}
+.modal-box h2{margin:0 0 8px;font-size:24px}.modal-box p{margin:0;color:var(--muted);line-height:1.6}.modal-box .actions{justify-content:center}
+@media(max-width:850px){
+  .hero,.section-head,.course-top,.session-top{flex-direction:column}
+  .form-grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}
+}
+@media(max-width:520px){
+  .container{width:min(100% - 18px,1140px);margin-top:10px}.hero,.card{padding:17px}.hero h1{font-size:30px}
+  .stats{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="hero">
+  <div>
+    <p>CSE406 Software Engineering Project（軟體工程專案）</p>
+    <h1>Adaptive Study Scheduler（自適應學習時間安排器）</h1>
+    <p>Plan only for the time you actually have today, while tracking a weekly goal.（只根據今天實際可用的時間安排學習，同時追蹤每週目標。）</p>
+  </div>
+  <div class="hero-badge">Daily Adaptive Planning（每日自適應規劃）</div>
+</header>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>1. Weekly Goal（每週目標）</h2>
+      <p>You only set a weekly target. You do not need to predict your whole week.（只設定每週目標，不需要提前預測整週行程。）</p>
+    </div>
+    <button id="demoBtn" class="btn-secondary">Load Demo（載入示例）</button>
+  </div>
+
+  <div class="form-grid">
+    <div>
+      <label>Weekly Study Target（每週學習目標）</label>
+      <input id="weeklyTargetInput" type="number" min="1" max="80" step="0.5" placeholder="15">
+    </div>
+    <div>
+      <label>Current Week（本週）</label>
+      <input id="weekInput" type="text" readonly>
+    </div>
+  </div>
+
+  <div id="planStatus" class="plan-status">Today’s plan needs regeneration because the weekly goal or courses changed.（因每週目標或課程已變更，今天的計畫需要重新產生。）</div>
+  <div id="weeklyRealityWarning" class="message warning"></div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2 id="courseFormTitle">2. Add Courses（新增課程）</h2>
+      <p>Add your courses once. No study topics are required.（課程只需加入一次，不需要輸入具體學習內容。）</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div>
+      <label>Course Name（課程名稱）</label>
+      <input id="courseInput" type="text" placeholder="">
+    </div>
+    <div>
+      <label>Difficulty（難度）</label>
+      <select id="difficultyInput">
+        <option value="Easy">Easy（簡單）</option>
+        <option value="Medium" selected>Medium（中等）</option>
+        <option value="Hard">Hard（困難）</option>
+      </select>
+    </div>
+    <div>
+      <label>Priority（優先級）</label>
+      <select id="priorityInput">
+        <option value="Low">Low（低）</option>
+        <option value="Medium" selected>Medium（中）</option>
+        <option value="High">High（高）</option>
+      </select>
+    </div>
+    <div>
+      <label>Exam Date - Optional（考試日期－選填）</label>
+      <input id="examDateInput" type="date">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="addCourseBtn" class="btn-primary">Add Course（新增課程）</button>
+    <button id="cancelEditBtn" class="btn-secondary" style="display:none">Cancel Edit（取消編輯）</button>
+    <button id="clearCourseBtn" class="btn-secondary">Clear（清空）</button>
+  </div>
+
+  <div id="message" class="message"></div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>3. Course Overview（課程概況）</h2>
+      <p>The weekly target is divided by difficulty, priority, and an optional near exam date.（每週目標會依難度、優先級與接近考試日期的程度分配。）</p>
+    </div>
+  </div>
+  <div id="courseList" class="course-list"></div>
+  <div id="courseEmpty" class="empty">No courses added yet（尚未新增課程）</div>
+</section>
+
+<section class="stats">
+  <div class="stat"><span>Weekly Target（每週目標）</span><strong id="targetStat">0h</strong></div>
+  <div class="stat"><span>Completed This Week（本週已完成）</span><strong id="completedStat">0h</strong></div>
+  <div class="stat"><span>Remaining（剩餘）</span><strong id="remainingStat">0h</strong></div>
+  <div class="stat"><span>Days Left This Week（本週剩餘天數）</span><strong id="daysLeftStat">0</strong></div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>4. Plan Today（規劃今天）</h2>
+      <p>Enter only the time you realistically have from now until today ends.（只輸入從現在到今天結束前，實際能拿來學習的時間。）</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div>
+      <label>Available Study Time From Now（從現在起今天可學習時間）</label>
+      <input id="todayAvailableInput" type="number" min="0.25" max="12" step="0.25" placeholder="3">
+    </div>
+    <div>
+      <label>Today（今天）</label>
+      <input id="todayInput" type="text" readonly>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="generateTodayBtn" class="btn-purple">Generate Today’s Plan（產生今日計畫）</button>
+    <button id="noTimeBtn" class="btn-secondary">No Time Today（今天沒時間）</button>
+  </div>
+
+  <div class="help-box">
+    The program never assumes you are free on Friday or Saturday. Tomorrow, open it again and enter tomorrow’s real available time.（程式不會假設你週五或週六一定有空；明天再打開程式，輸入明天實際可用的時間即可。）<br>
+    A single study session is capped at 90 minutes to avoid unrealistic long sessions.（單次學習最多90分鐘，避免不切實際的超長時段。）
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>5. Today’s Plan（今日計畫）</h2>
+      <p>Each session is limited to 90 minutes. The timer records actual study time.（每個學習時段最多90分鐘；計時器會記錄實際學習時間。）</p>
+    </div>
+  </div>
+
+  <div id="todayPlanList" class="session-list"></div>
+  <div id="todayPlanEmpty" class="empty">No plan for today yet（今天尚未產生計畫）</div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h2>6. Weekly Progress（每週進度）</h2>
+      <p>Progress uses Actual Study Time（實際學習時間）, not just planned time. A new week starts automatically every Monday.（進度會依實際學習時間計算，而不是只看計畫時間；每週一自動開始新的週進度。）</p>
+    </div>
+  </div>
+  <div id="historyList" class="session-list"></div>
+  <div id="historyEmpty" class="empty">No completed study session this week（本週尚無已完成的學習時段）</div>
+</section>
+
+</div>
+
+<div id="finishModal" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-icon">✓</div>
+    <h2>Study session finished!（學習時段已結束！）</h2>
+    <p id="finishModalText">This session has been marked as completed.（此學習時段已標記為完成。）</p>
+    <div class="actions"><button id="finishModalOk" class="btn-success">OK（確定）</button></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY="adaptiveStudyScheduler_daily_final_v1";
+
+const weeklyTargetInput=document.getElementById("weeklyTargetInput");
+const weekInput=document.getElementById("weekInput");
+const courseInput=document.getElementById("courseInput");
+const difficultyInput=document.getElementById("difficultyInput");
+const priorityInput=document.getElementById("priorityInput");
+const examDateInput=document.getElementById("examDateInput");
+const message=document.getElementById("message");
+const planStatus=document.getElementById("planStatus");
+const weeklyRealityWarning=document.getElementById("weeklyRealityWarning");
+const courseFormTitle=document.getElementById("courseFormTitle");
+const addCourseBtn=document.getElementById("addCourseBtn");
+const cancelEditBtn=document.getElementById("cancelEditBtn");
+const courseList=document.getElementById("courseList");
+const courseEmpty=document.getElementById("courseEmpty");
+const targetStat=document.getElementById("targetStat");
+const completedStat=document.getElementById("completedStat");
+const remainingStat=document.getElementById("remainingStat");
+const daysLeftStat=document.getElementById("daysLeftStat");
+const todayAvailableInput=document.getElementById("todayAvailableInput");
+const todayInput=document.getElementById("todayInput");
+const todayPlanList=document.getElementById("todayPlanList");
+const todayPlanEmpty=document.getElementById("todayPlanEmpty");
+const historyList=document.getElementById("historyList");
+const historyEmpty=document.getElementById("historyEmpty");
+const finishModal=document.getElementById("finishModal");
+const finishModalText=document.getElementById("finishModalText");
+const finishModalOk=document.getElementById("finishModalOk");
+
+let state={weeklyTarget:0,courses:[],sessions:[],timer:null,planDirty:false};
+try{
+  const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");
+  if(saved) state={
+    weeklyTarget:Number(saved.weeklyTarget||0),
+    courses:saved.courses||[],
+    sessions:saved.sessions||[],
+    timer:saved.timer||null,
+    planDirty:!!saved.planDirty
+  };
+}catch(e){}
+
+let timerInterval=null;
+let audioCtx=null;
+let editingCourseId=null;
+
+function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+function pad(n){return String(n).padStart(2,"0")}
+function dateKey(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+function parseDate(v){const [y,m,d]=v.split("-").map(Number);return new Date(y,m-1,d,12,0,0)}
+function startOfWeek(date){const d=new Date(date);const day=d.getDay();d.setDate(d.getDate()+(day===0?-6:1-day));d.setHours(12,0,0,0);return d}
+function endOfWeek(date){return new Date(addDays(startOfWeek(date),6))}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function currentWeekKey(){return dateKey(startOfWeek(new Date()))}
+function todayKey(){return dateKey(new Date())}
+function esc(t){return String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function round5(n){return Math.max(0,Math.round(n/5)*5)}
+function hoursText(mins){return `${(mins/60).toFixed(mins%60===0?0:1)}h`}
+function formatMinutes(mins){const h=Math.floor(mins/60),m=mins%60;return h?`${h}h ${m?m+"m":""}`:`${m}m`}
+
+function showMessage(text,type="info"){message.className=`message show ${type}`;message.textContent=text}
+
+function formatWeek(){
+  const s=startOfWeek(new Date()),e=endOfWeek(new Date());
+  weekInput.value=`${s.getFullYear()}/${pad(s.getMonth()+1)}/${pad(s.getDate())} - ${e.getFullYear()}/${pad(e.getMonth()+1)}/${pad(e.getDate())}`;
+  todayInput.value=new Intl.DateTimeFormat("en",{weekday:"long",year:"numeric",month:"short",day:"numeric"}).format(new Date());
+}
+formatWeek();
+
+function currentWeekSessions(){
+  const wk=currentWeekKey();
+  return state.sessions.filter(s=>s.weekStart===wk);
+}
+
+function completedSessions(){
+  return currentWeekSessions().filter(s=>s.status==="completed");
+}
+
+function completedSessionMinutes(s){
+  return Number(s.actualMinutes != null ? s.actualMinutes : s.minutes || 0);
+}
+
+function completedMinutesForCourse(courseId){
+  return completedSessions()
+    .filter(s=>s.courseId===courseId)
+    .reduce((sum,s)=>sum+completedSessionMinutes(s),0);
+}
+
+function totalCompletedMinutes(){
+  return completedSessions().reduce((sum,s)=>sum+completedSessionMinutes(s),0);
+}
+
+function daysLeft(){
+  const today=new Date(),end=endOfWeek(today);
+  const t=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  const e=new Date(end.getFullYear(),end.getMonth(),end.getDate());
+  return Math.floor((e-t)/(24*60*60*1000))+1;
+}
+
+function courseWeight(c){
+  const d={Easy:1,Medium:2,Hard:3}[c.difficulty]||2;
+  const p={Low:1,Medium:2,High:3}[c.priority]||2;
+  let boost=0;
+  if(c.examDate){
+    const days=Math.ceil((parseDate(c.examDate)-new Date())/(24*60*60*1000));
+    if(days>=0&&days<=7)boost=2;
+    else if(days>7&&days<=14)boost=1;
+  }
+  return d+p+boost;
+}
+
+function weeklyTargetMinutes(){
+  return Math.max(0,Number(weeklyTargetInput.value||state.weeklyTarget||0)*60);
+}
+
+function courseTargetMinutes(course){
+  const totalWeight=state.courses.reduce((sum,c)=>sum+courseWeight(c),0);
+  if(!totalWeight)return 0;
+  return weeklyTargetMinutes()*courseWeight(course)/totalWeight;
+}
+
+function markDirty(){
+  const oldTarget=Number(state.weeklyTarget||0);
+  const newTarget=Number(weeklyTargetInput.value||0);
+
+  if(oldTarget && newTarget && oldTarget!==newTarget && currentWeekSessions().length){
+    showMessage(
+      `Weekly target changed from ${oldTarget}h to ${newTarget}h. Today’s pending plan should be regenerated.（每週目標已從 ${oldTarget} 小時改為 ${newTarget} 小時，今天尚未完成的計畫應重新產生。）`,
+      "warning"
+    );
+  }
+
+  if(currentWeekSessions().some(s=>s.status==="pending")) state.planDirty=true;
+  state.weeklyTarget=newTarget;
+  saveState();
+  render();
+}
+
+weeklyTargetInput.value=state.weeklyTarget||"";
+weeklyTargetInput.addEventListener("change",markDirty);
+
+function clearCourseForm(){
+  editingCourseId=null;
+  courseInput.value="";
+  difficultyInput.value="Medium";
+  priorityInput.value="Medium";
+  examDateInput.value="";
+  courseFormTitle.textContent="2. Add Courses（新增課程）";
+  addCourseBtn.textContent="Add Course（新增課程）";
+  cancelEditBtn.style.display="none";
+  courseInput.focus();
+}
+
+function addCourse(){
+  const name=courseInput.value.trim();
+  if(!name){
+    showMessage("Please enter Course Name.（請輸入課程名稱。）","warning");
+    return;
+  }
+
+  const duplicate=state.courses.some(c=>
+    c.name.toLowerCase()===name.toLowerCase() &&
+    c.id!==editingCourseId
+  );
+  if(duplicate){
+    showMessage("This course already exists.（這門課程已經存在。）","warning");
+    return;
+  }
+
+  if(editingCourseId!==null){
+    const course=state.courses.find(c=>c.id===editingCourseId);
+    if(course){
+      course.name=name;
+      course.difficulty=difficultyInput.value;
+      course.priority=priorityInput.value;
+      course.examDate=examDateInput.value;
+
+      state.sessions.forEach(s=>{
+        if(s.courseId===course.id) s.courseName=name;
+      });
+
+      state.planDirty=true;
+      saveState();
+      clearCourseForm();
+      render();
+      showMessage("Course updated successfully.（課程已成功更新。）","success");
+      return;
+    }
+  }
+
+  state.courses.push({
+    id:Date.now(),
+    name,
+    difficulty:difficultyInput.value,
+    priority:priorityInput.value,
+    examDate:examDateInput.value
+  });
+
+  clearCourseForm();
+  state.planDirty=true;
+  saveState();
+  render();
+  showMessage("Course added successfully.（課程已成功新增。）","success");
+}
+
+function editCourse(id){
+  const c=state.courses.find(x=>x.id===id);
+  if(!c)return;
+
+  editingCourseId=id;
+  courseInput.value=c.name;
+  difficultyInput.value=c.difficulty;
+  priorityInput.value=c.priority;
+  examDateInput.value=c.examDate||"";
+
+  courseFormTitle.textContent="2. Edit Course（編輯課程）";
+  addCourseBtn.textContent="Update Course（更新課程）";
+  cancelEditBtn.style.display="inline-block";
+  courseInput.focus();
+  window.scrollTo({top:document.getElementById("courseInput").getBoundingClientRect().top + window.scrollY - 120,behavior:"smooth"});
+}
+
+function deleteCourse(id){
+  state.courses=state.courses.filter(c=>c.id!==id);
+  state.sessions=state.sessions.filter(s=>!(s.courseId===id&&s.status==="pending"));
+  if(state.timer&&!state.sessions.some(s=>s.id===state.timer.sessionId)){state.timer=null;stopTimerLoop()}
+  state.planDirty=true;
+  saveState();render();
+  showMessage("Course deleted. Completed history remains saved.（課程已刪除；已完成的歷史紀錄仍保留。）","info");
+}
+
+function removePendingToday(){
+  const today=todayKey();
+  const removedIds=new Set(state.sessions.filter(s=>s.date===today&&s.status==="pending").map(s=>s.id));
+  state.sessions=state.sessions.filter(s=>!(s.date===today&&s.status==="pending"));
+  if(state.timer&&removedIds.has(state.timer.sessionId)){state.timer=null;stopTimerLoop()}
+}
+
+function generateTodayPlan(){
+  const targetHours=Number(weeklyTargetInput.value);
+  const availableHours=Number(todayAvailableInput.value);
+
+  if(!targetHours||targetHours<=0){showMessage("Please enter Weekly Study Target.（請輸入每週學習目標。）","warning");return}
+  if(!state.courses.length){showMessage("Please add at least one course.（請先新增至少一門課程。）","warning");return}
+  if(!availableHours||availableHours<=0){showMessage("Please enter the time you actually have today.（請輸入今天實際可用的學習時間。）","warning");return}
+  if(availableHours>12){showMessage("Today’s available study time cannot exceed 12 hours.（今天可用學習時間不能超過12小時。）","warning");return}
+
+  state.weeklyTarget=targetHours;
+  removePendingToday();
+
+  const weeklyRemaining=Math.max(0,targetHours*60-totalCompletedMinutes());
+  if(weeklyRemaining<=0){
+    state.planDirty=false;saveState();render();
+    showMessage("Your weekly study target is already complete.（你本週的學習目標已經完成。）","success");
+    return;
+  }
+
+  let budget=Math.min(Math.round(availableHours*60),Math.round(weeklyRemaining));
+
+  const needs=state.courses.map(c=>{
+    const target=courseTargetMinutes(c);
+    const completed=completedMinutesForCourse(c.id);
+    return {course:c,target,completed,remaining:Math.max(0,target-completed),allocated:0};
+  }).filter(x=>x.remaining>1);
+
+  if(!needs.length){
+    showMessage("There is no remaining course target for this week.（本週各課程已沒有剩餘目標。）","success");
+    return;
+  }
+
+  // Allocate in 25-minute focus blocks; remaining minutes go to the course with the largest gap.
+  while(budget>=25){
+    const eligible=needs.filter(x=>x.allocated+25<=x.remaining+12.5);
+    const pool=eligible.length?eligible:needs.filter(x=>x.allocated<x.remaining-1);
+    if(!pool.length)break;
+    pool.sort((a,b)=>(b.remaining-b.allocated)-(a.remaining-a.allocated) || courseWeight(b.course)-courseWeight(a.course));
+    pool[0].allocated+=25;
+    budget-=25;
+  }
+
+  if(budget>=10){
+    needs.sort((a,b)=>(b.remaining-b.allocated)-(a.remaining-a.allocated));
+    needs[0].allocated+=budget;
+    budget=0;
+  }
+
+  const allocations=needs.filter(x=>x.allocated>=10);
+
+  allocations.forEach(x=>{
+    let remainingAllocation=round5(x.allocated);
+
+    while(remainingAllocation>0){
+      const chunk=Math.min(90,remainingAllocation);
+
+      state.sessions.push({
+        id:Date.now()+Math.floor(Math.random()*10000000),
+        weekStart:currentWeekKey(),
+        date:todayKey(),
+        courseId:x.course.id,
+        courseName:x.course.name,
+        minutes:chunk,
+        actualMinutes:null,
+        completionMethod:null,
+        status:"pending",
+        createdAt:Date.now()+Math.floor(Math.random()*1000)
+      });
+
+      remainingAllocation-=chunk;
+    }
+  });
+
+  state.planDirty=false;
+  saveState();render();
+
+  const planned=allocations.reduce((sum,x)=>sum+round5(x.allocated),0);
+  showMessage(
+    planned<availableHours*60
+      ?`Today’s plan uses ${formatMinutes(planned)} because only ${formatMinutes(Math.round(weeklyRemaining))} remains in the weekly target.（今日計畫安排 ${formatMinutes(planned)}，因本週目標只剩 ${formatMinutes(Math.round(weeklyRemaining))}。）`
+      :`Today’s plan created for ${formatMinutes(planned)}.（今日計畫已產生，共 ${formatMinutes(planned)}。）`,
+    "success"
+  );
+}
+
+function noTimeToday(){
+  removePendingToday();
+  state.planDirty=false;
+  saveState();render();
+  showMessage("No study plan was scheduled for today. Try again tomorrow with tomorrow’s real available time.（今天不安排學習；明天再依明天實際可用時間重新規劃。）","info");
+}
+
+function markCompleted(id){
+  const s=state.sessions.find(x=>x.id===id);
+  if(!s)return;
+
+  if(state.timer&&state.timer.sessionId===id){
+    const elapsedSec=timerElapsedSeconds();
+    s.actualMinutes=Math.max(1,Math.round(elapsedSec/60));
+    s.completionMethod="timer";
+    state.timer=null;
+    stopTimerLoop();
+  }else{
+    s.actualMinutes=s.minutes;
+    s.completionMethod="manual";
+  }
+
+  s.status="completed";
+  saveState();
+  render();
+}
+
+function beep(){
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==="suspended")audioCtx.resume();
+    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+    osc.frequency.value=880;gain.gain.value=.08;osc.connect(gain);gain.connect(audioCtx.destination);
+    osc.start();setTimeout(()=>osc.stop(),700);
+  }catch(e){}
+}
+
+function startStudy(id,demo=false){
+  const s=state.sessions.find(x=>x.id===id);if(!s||s.status!=="pending")return;
+  if(state.timer&&state.timer.sessionId!==id){
+    showMessage("Another timer is active. Pause or cancel it first.（另一個計時器正在使用中，請先暫停或取消。）","warning");return;
+  }
+
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==="suspended")audioCtx.resume();
+  }catch(e){}
+
+  if(state.timer&&state.timer.sessionId===id&&!state.timer.running){
+    state.timer.running=true;
+    state.timer.endAt=Date.now()+state.timer.remainingSec*1000;
+  }else{
+    const sec=demo?10:s.minutes*60;
+    state.timer={
+      sessionId:id,
+      running:true,
+      remainingSec:sec,
+      totalSec:sec,
+      endAt:Date.now()+sec*1000,
+      demo,
+      startedAt:Date.now()
+    };
+  }
+  saveState();startTimerLoop();render();
+}
+
+function pauseTimer(id){
+  if(!state.timer||state.timer.sessionId!==id||!state.timer.running)return;
+  state.timer.remainingSec=remainingSeconds();
+  state.timer.running=false;state.timer.endAt=null;
+  saveState();stopTimerLoop();render();
+}
+
+function cancelTimer(id){
+  if(!state.timer||state.timer.sessionId!==id)return;
+  state.timer=null;saveState();stopTimerLoop();render();
+  showMessage("Timer cancelled. The session is still pending.（計時已取消，此學習時段仍為待完成。）","info");
+}
+
+function timerElapsedSeconds(){
+  if(!state.timer)return 0;
+  const total=Number(state.timer.totalSec||state.timer.remainingSec||0);
+  return Math.max(0,total-remainingSeconds());
+}
+
+function remainingSeconds(){
+  if(!state.timer)return 0;
+  if(!state.timer.running)return Math.max(0,state.timer.remainingSec||0);
+  return Math.max(0,Math.ceil((state.timer.endAt-Date.now())/1000));
+}
+
+function formatCountdown(sec){
+  const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+function finishTimer(){
+  if(!state.timer)return;
+
+  const timer={...state.timer};
+  const id=timer.sessionId;
+  const s=state.sessions.find(x=>x.id===id);
+  state.timer=null;
+
+  if(timer.demo){
+    saveState();
+    stopTimerLoop();
+    beep();
+    render();
+    finishModalText.textContent="Demo reminder finished. The real study session remains pending.（演示提醒已結束；真正的學習時段仍保持待完成。）";
+    finishModal.classList.add("show");
+    return;
+  }
+
+  if(s&&s.status==="pending"){
+    s.actualMinutes=s.minutes;
+    s.completionMethod="timer";
+    s.status="completed";
+  }
+
+  const name=s?s.courseName:"Study session";
+  saveState();
+  stopTimerLoop();
+  beep();
+  render();
+  finishModalText.textContent=`${name} finished. Actual study time: ${s?formatMinutes(s.actualMinutes):""}.（${name} 已結束；實際學習時間：${s?formatMinutes(s.actualMinutes):""}。）`;
+  finishModal.classList.add("show");
+}
+
+function updateTimerDisplays(){
+  if(!state.timer||!state.timer.running)return;
+  const sec=remainingSeconds();
+  state.timer.remainingSec=sec;
+  document.querySelectorAll(`[data-timer-session="${state.timer.sessionId}"]`).forEach(el=>el.textContent=formatCountdown(sec));
+  if(sec<=0)finishTimer();
+}
+function stopTimerLoop(){if(timerInterval){clearInterval(timerInterval);timerInterval=null}}
+function startTimerLoop(){stopTimerLoop();if(!state.timer||!state.timer.running)return;updateTimerDisplays();timerInterval=setInterval(updateTimerDisplays,500)}
+
+function courseCard(c){
+  const target=Math.round(courseTargetMinutes(c));
+  const done=completedMinutesForCourse(c.id);
+  const remaining=Math.max(0,target-done);
+  const pct=target?Math.min(100,Math.round(done/target*100)):0;
+  return `<article class="course-card">
+    <div class="course-top">
+      <div style="min-width:0;flex:1">
+        <h3>${esc(c.name)}</h3>
+        <div class="meta">
+          <span><b>Difficulty（難度）:</b> ${esc(c.difficulty)}</span>
+          <span><b>Priority（優先級）:</b> ${esc(c.priority)}</span>
+          <span><b>Exam Date（考試日期）:</b> ${c.examDate?esc(c.examDate):"Not Set（未設定）"}</span>
+        </div>
+        <div class="allocation">
+          Weekly Share（本週建議份額）: ${formatMinutes(target)} ·
+          Completed（已完成）: ${formatMinutes(done)} ·
+          Remaining（剩餘）: ${formatMinutes(remaining)}
+          <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:0">
+        <button class="btn-secondary btn-small" onclick="editCourse(${c.id})">Edit（編輯）</button>
+        <button class="btn-danger btn-small" onclick="deleteCourse(${c.id})">Delete（刪除）</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+function sessionBadge(s){
+  if(state.timer&&state.timer.sessionId===s.id){
+    return state.timer.running?`<span class="badge running">Running（計時中）</span>`:`<span class="badge paused">Paused（已暫停）</span>`;
+  }
+  if(s.status==="completed")return`<span class="badge completed">Completed（已完成）</span>`;
+  return`<span class="badge pending">Pending（待完成）</span>`;
+}
+
+function sessionCard(s){
+  const timerHere=state.timer&&state.timer.sessionId===s.id;
+  const running=timerHere&&state.timer.running;
+  return `<article class="session-card ${s.status==="completed"?"completed":running?"running":""}">
+    <div class="session-top">
+      <div>
+        <h3>${esc(s.courseName)}</h3>
+        <div class="meta">
+          <span><b>Planned Study Time（計畫學習時間）:</b> ${formatMinutes(s.minutes)}</span>
+          <span><b>Date（日期）:</b> ${esc(s.date)}</span>
+          ${s.status==="completed"?`<span><b>Actual Study Time（實際學習時間）:</b> ${formatMinutes(completedSessionMinutes(s))}</span>`:""}
+        </div>
+      </div>
+      ${sessionBadge(s)}
+    </div>
+
+    ${timerHere?`<div class="timer-box">
+      <span>Remaining Time（剩餘時間）</span>
+      <span class="timer-value" data-timer-session="${s.id}">${formatCountdown(remainingSeconds())}</span>
+      ${running?`<button class="btn-warning btn-small" onclick="pauseTimer(${s.id})">Pause（暫停）</button>`:`<button class="btn-primary btn-small" onclick="startStudy(${s.id},false)">Resume（繼續）</button>`}
+      <button class="btn-secondary btn-small" onclick="cancelTimer(${s.id})">Cancel Timer（取消計時）</button>
+      <button class="btn-success btn-small" onclick="markCompleted(${s.id})">Finish Now（現在完成）</button>
+    </div>`:""}
+
+    ${s.status==="pending"&&!timerHere?`<div class="actions">
+      <button class="btn-primary btn-small" onclick="startStudy(${s.id},false)">Start Study（開始學習）</button>
+      <button class="btn-secondary btn-small" onclick="startStudy(${s.id},true)">10s Demo Timer（10秒演示計時）</button>
+      <button class="btn-success btn-small" onclick="markCompleted(${s.id})">Complete Manually（手動完成）</button>
+    </div>`:""}
+  </article>`;
+}
+
+function render(){
+  const targetMin=weeklyTargetMinutes();
+  const done=totalCompletedMinutes();
+  const remain=Math.max(0,targetMin-done);
+
+  targetStat.textContent=hoursText(targetMin);
+  completedStat.textContent=hoursText(done);
+  remainingStat.textContent=hoursText(remain);
+  daysLeftStat.textContent=daysLeft();
+
+  courseList.innerHTML=state.courses.map(courseCard).join("");
+  courseEmpty.style.display=state.courses.length?"none":"block";
+
+  const today=todayKey();
+  const todays=currentWeekSessions().filter(s=>s.date===today);
+  todayPlanList.innerHTML=todays.map(sessionCard).join("");
+  todayPlanEmpty.style.display=todays.length?"none":"block";
+
+  const history=completedSessions().slice().sort((a,b)=>b.createdAt-a.createdAt);
+  historyList.innerHTML=history.map(sessionCard).join("");
+  historyEmpty.style.display=history.length?"none":"block";
+
+  planStatus.classList.toggle("show",state.planDirty);
+
+  const currentDate=new Date();
+  const isSunday=currentDate.getDay()===0;
+  const realisticDailyLimit=6*60;
+
+  if(isSunday && remain>realisticDailyLimit){
+    weeklyRealityWarning.className="message show warning";
+    weeklyRealityWarning.textContent=
+      `Weekly target may not be achievable. ${formatMinutes(remain)} remains on Sunday. Consider lowering this week’s target instead of forcing an unrealistic study day.（本週目標可能無法完成：星期日仍剩 ${formatMinutes(remain)}。建議調低本週目標，而不是勉強安排不切實際的長時間學習。）`;
+  }else{
+    weeklyRealityWarning.className="message warning";
+    weeklyRealityWarning.textContent="";
+  }
+
+  if(state.timer)setTimeout(updateTimerDisplays,0);
+}
+
+function loadDemo(){
+  weeklyTargetInput.value="15";
+  state.weeklyTarget=15;
+  state.courses=[
+    {id:Date.now()+1,name:"Probability & Statistics",difficulty:"Hard",priority:"High",examDate:""},
+    {id:Date.now()+2,name:"Software Engineering",difficulty:"Hard",priority:"Medium",examDate:""},
+    {id:Date.now()+3,name:"English",difficulty:"Medium",priority:"Medium",examDate:""}
+  ];
+  removePendingToday();
+  state.planDirty=true;
+  saveState();render();
+  showMessage("3 demo courses loaded. Enter how much time you really have today, then generate today’s plan.（已載入3門示例課程；請輸入今天實際可用時間，再產生今日計畫。）","info");
+}
+
+addCourseBtn.onclick=addCourse;
+cancelEditBtn.onclick=clearCourseForm;
+document.getElementById("clearCourseBtn").onclick=clearCourseForm;
+document.getElementById("generateTodayBtn").onclick=generateTodayPlan;
+document.getElementById("noTimeBtn").onclick=noTimeToday;
+document.getElementById("demoBtn").onclick=loadDemo;
+finishModalOk.onclick=()=>finishModal.classList.remove("show");
+finishModal.addEventListener("click",e=>{if(e.target===finishModal)finishModal.classList.remove("show")});
+
+window.deleteCourse=deleteCourse;
+window.editCourse=editCourse;
+window.markCompleted=markCompleted;
+window.startStudy=startStudy;
+window.pauseTimer=pauseTimer;
+window.cancelTimer=cancelTimer;
+
+render();
+if(state.timer&&state.timer.running){
+  if(remainingSeconds()<=0)finishTimer();
+  else startTimerLoop();
+}
+</script>
+</body>
+</html>
